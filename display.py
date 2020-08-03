@@ -19,9 +19,10 @@ def show_spearman(X_train):
     # mera multikolinearnosti podatkov (površina pod krivuljo):
     # nn = len(X_train.columns)
     # preverjeno, da je len(SpearDF['abscorr']) = (nn * (nn + 1) / 2) - nn  # zadnje je diagonala
-    M = np.mean(SpearDF['abscorr'])
+    Mp = np.mean(SpearDF['abscorr'])
     axs = SpearDF.plot(y='abscorr', use_index=False, grid=True)
-    axs.set_title('Multicollinearity of features (M = %s)' % M)
+    plt.suptitle('Pairwise Spearman\'s rank correlation coefficients (absolute value)')
+    axs.set_title('(Mp = %s)' % Mp)
     axs.set_xlabel('No. of feature pairs')
     axs.set_ylabel('Spearman\'s rank correlation coefficient')
     return axs, M, SpearDF

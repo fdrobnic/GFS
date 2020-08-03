@@ -462,7 +462,7 @@ class Application(tk.Tk):
 
         # Center main window
 
-        self.update_idletasks()
+        self.update()
 
         xp = int((self.winfo_screenwidth() / 2) - (self.winfo_width() / 2) - 8)
         yp = int((self.winfo_screenheight() / 2) - (self.winfo_height() / 2) - 30)
@@ -643,7 +643,7 @@ class Application(tk.Tk):
         self.s_text.insert('end', str(s))
         self.progress["value"] = n
         self.progress["maximum"] = m
-        self.update_idletasks()
+        self.update()
 
 
 if __name__ == '__main__':
