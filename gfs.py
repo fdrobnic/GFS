@@ -21,6 +21,7 @@ Xc = pd.DataFrame(columns=[0])
 Y_train = pd.DataFrame(columns=[0])
 SpearDF = pd.DataFrame(columns=[0])
 mapping_ind = {}
+w = ''
 w2 = ''
 tuned_parameters = {}
 est: GridSearchCV = object
@@ -79,7 +80,8 @@ def show_vif():
         r = 'Multicollinearity measure (mean VIF): %s' % np.mean(vdf['value'])
         app.mText.insert('end-1c', '%s\n' % r)
         ax1 = vdf.plot(y='value', use_index=False, grid=True, logy=True)
-        ax1.set_title('Variance inflation factors by feature')
+        plt.suptitle('Variance inflation factors by feature')
+        ax1.set_title('(Average VIF = %s)' % np.mean(vdf['value']))
         ax1.get_figure().canvas.set_window_title('vif')
         ax1.set_xlabel('No. of features')
         ax1.set_ylabel('VIF')
@@ -87,10 +89,14 @@ def show_vif():
 
 
 def learn_base():
-    global w2, tuned_parameters, X_train, Y_train, est
+    global w, w2, tuned_parameters, X_train, Y_train, est
     if len(X_train):
+        parent = psutil.Process()
+        parent.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
+
         w = [2 ** a for a in range(0, int(np.floor(np.log2(len(X_train.columns)))) + 1)]
         w.append(len(X_train.columns))
+        w2 = [a ** 2 for a in range(4, 12)]
         tuned_parameters = {'max_features': w,
                             'n_estimators': w2}
         mer_metoda = 'accuracy'
@@ -111,6 +117,7 @@ def learn_base():
                                      'Best OOB score:', est.best_estimator_.oob_score_,
                                      'Best CV score:', est.best_score_)
         app.mText.insert('end-1c', '%s\n' % r)
+        parent.nice(psutil.NORMAL_PRIORITY_CLASS)
 
 
 def importance_base():
@@ -285,12 +292,12 @@ def show_growth_stat():
                                 r.append([entry.name, s, l[2], l[0]])
                             s += 1
         rd = pd.DataFrame(r, columns=['name', 'step', 'acc', 'feature'])
-        ax: plt.Axes = rd.boxplot(by='step', column='acc')
+        ax: plt.Axes = rd.boxplot(column='acc', by='step')
         ax.get_figure().suptitle('')
         ax.set_title('Accuracy by step')
         ax.get_figure().canvas.set_window_title('growth')
         '''
-        ax = rd.boxplot(by='step', column='acc')
+        ax = rd.boxplot(column='acc', by='step')
         ax.get_figure().suptitle('')
         ax.set_title('Accuracy by step')
         ax.set_yscale('log')
@@ -330,7 +337,7 @@ def show_num_feat_stat():
     rd = pd.DataFrame(r, columns=['dataset', 'name', 'step', 'acc', 'feature'])
     rds = rd.groupby(by=['dataset', 'name']).agg('max')['step']
     rd2 = pd.DataFrame({'dataset': np.array(rds.index.get_level_values(0).values), 'step': np.array(rds.values)})
-    ax: plt.Axes = rd2.boxplot(by='dataset', column='step')
+    ax: plt.Axes = rd2.boxplot(column='step', by='dataset')
     ax.get_figure().suptitle('')
     ax.set_title('Number of selected features')
     ax.get_figure().canvas.set_window_title('num_feat')
@@ -517,40 +524,28 @@ class Application(tk.Tk):
         self.dataset.configure(text=self.dataset_name)
 
     def provide_cancer(self):
-        global X_train
-        global Y_train
-        global mapping_ind
-        global w2
+        global X_train, Y_train, mapping_ind, w2
         X_train, Y_train, mapping_ind = data.provide_cancer()
         w2 = [a ** 2 for a in range(1, 10)]  # for UCI-BCW
         # messagebox.showinfo("Success", "Data imported (%s rows)" % len(X_train))
         self.set_dataset_name('UCI-BCW')
 
     def provide_KDD(self):
-        global X_train
-        global Y_train
-        global mapping_ind
-        global w2
+        global X_train, Y_train, mapping_ind, w2
         X_train, Y_train, mapping_ind = data.provide_KDD()
         w2 = [a ** 2 for a in range(4, 12)]  # for NSL-KDD
         # messagebox.showinfo("Success", "Data imported (%s rows)" % len(X_train))
         self.set_dataset_name('NSL-KDD')
 
     def load_data_cancer(self):
-        global X_train
-        global Y_train
-        global mapping_ind
-        global w2
+        global X_train, Y_train, mapping_ind, w2
         data.load_data_cancer()
         w2 = [a ** 2 for a in range(1, 10)]  # for UCI-BCW
         # messagebox.showinfo("Success", "Data imported (%s rows)" % len(X_train))
         self.set_dataset_name('UCI-BCW')
 
     def load_data_KDD(self):
-        global X_train
-        global Y_train
-        global mapping_ind
-        global w2
+        global X_train, Y_train, mapping_ind, w2
         data.load_data_KDD()
         w2 = [a ** 2 for a in range(4, 12)]  # for NSL-KDD
         # messagebox.showinfo("Success", "Data imported (%s rows)" % len(X_train))
@@ -561,50 +556,72 @@ class Application(tk.Tk):
         if fname:
             dill.load_session(fname)
             self.set_dataset_name(fname)
+
+            curdir = Path(fname).parent
+            os.chdir(curdir)
             messagebox.showinfo("Success", "Data loaded.")
 
     def save_state(self):
-        data_ = {}
-        for obj in ['X_train',
-                    'Xc',
-                    'Y_train',
-                    'SpearDF',
-                    'mapping_ind',
-                    'w2',
-                    'tuned_parameters',
-                    'est',
-                    'est2',
-                    'ld',
-                    'tie_min_trees']:
-            print(obj, str(type(eval(obj))))
-            data_[obj] = eval(obj)
-        with open('state.pkl', 'wb') as f:
-            dill.dump(data_, f)
+        fname = fdialog.asksaveasfilename(initialfile='state_'
+                                                      + datetime.datetime.now().isoformat(timespec='minutes').replace(':', '-')
+                                                      + '.pkl',
+                                          filetypes=['dill {.pkl}'],
+                                          title='Save dill PKL file',
+                                          defaultextension='PKL')
+        if fname:
+            data_ = {}
+            for obj in ['X_train',
+                        'Xc',
+                        'Y_train',
+                        'SpearDF',
+                        'mapping_ind',
+                        'w',
+                        'w2',
+                        'tuned_parameters',
+                        'est',
+                        'est2',
+                        'ld',
+                        'tie_min_trees']:
+                print(obj, str(type(eval(obj))))
+                data_[obj] = eval(obj)
+            with open(fname, 'wb') as f:
+                dill.dump(data_, f)
 
-        messagebox.showinfo("Success", "Data saved.")
+            curdir = Path(fname).parent
+            os.chdir(curdir)
+            messagebox.showinfo("Success", "Data saved.")
 
     def load_state(self):
-        global X_train, Xc, Y_train, SpearDF, mapping_ind, w2, tuned_parameters, est, est2, ld, tie_min_trees
+        global X_train, Xc, Y_train, SpearDF, mapping_ind, w, w2, tuned_parameters, est, est2, ld, tie_min_trees
         fname = 'state.pkl'
-        try:
-            with open(fname, 'rb') as f:
-                data_ = dill.load(f, ignore=True)
-        except FileNotFoundError:
-            messagebox.showerror("Error", "File %s not found." % fname)
-            return None
-        X_train = data_['X_train']
-        Xc = data_['Xc']
-        Y_train = data_['Y_train']
-        SpearDF = data_['SpearDF']
-        mapping_ind = data_['mapping_ind']
-        w2 = data_['w2']
-        tuned_parameters = data_['tuned_parameters']
-        est = data_['est']
-        est2 = data_['est2']
-        ld = data_['ld']
-        tie_min_trees = data_['tie_min_trees']
+        fname = fdialog.askopenfilename(initialfile=fname,
+                                        filetypes=['dill {.pkl}'],
+                                        title='Open dill PKL file',
+                                        defaultextension='PKL')
+        if fname:
+            try:
+                with open(fname, 'rb') as f:
+                    data_ = dill.load(f, ignore=True)
+            except FileNotFoundError:
+                messagebox.showerror("Error", "File %s not found." % fname)
+                return None
+            X_train = data_['X_train']
+            Xc = data_['Xc']
+            Y_train = data_['Y_train']
+            SpearDF = data_['SpearDF']
+            mapping_ind = data_['mapping_ind']
+            if data_.__contains__('w'):
+                w = data_['w']
+            w2 = data_['w2']
+            tuned_parameters = data_['tuned_parameters']
+            est = data_['est']
+            est2 = data_['est2']
+            ld = data_['ld']
+            tie_min_trees = data_['tie_min_trees']
 
-        messagebox.showinfo("Success", "Data loaded.")
+            curdir = Path(fname).parent
+            os.chdir(curdir)
+            messagebox.showinfo("Success", "Data loaded.")
 
     def show_calc_gfs(self):
         global w, w2
@@ -623,6 +640,9 @@ class Application(tk.Tk):
 
     def calc_gfs(self):
         global w, w2, tuned_parameters, Xc, ld, est2
+        parent = psutil.Process()
+        parent.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
+
         w = eval(self.w_text.get())
         w2 = eval(self.w2_text.get())
         tuned_parameters = {'max_features': w,
@@ -636,6 +656,7 @@ class Application(tk.Tk):
         est2.fit(Xc, Y_train[0])
 
         self.paramwin.withdraw()
+        parent.nice(psutil.NORMAL_PRIORITY_CLASS)
 
     def refresh_progress(self, s, n, m):
         if len(self.s_text.get()) > 0:

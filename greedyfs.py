@@ -52,9 +52,9 @@ def gfs_step(xc, est, x_train, y_train, tuned_parameters, callback=None, tie_min
         i += 1
         if c not in xc.columns:
             gfs_step_one_f(xc, est, x_train, y_train, tuned_parameters, c, bp, u, e)
-            time.sleep(0.1)
             if callback:
                 callback(s, i, p)
+            time.sleep(0.1)
 
     m = max(u.values())
     if len([c for c in u.keys() if u[c] == m]) == 1 or not tie_min_trees:

@@ -33,7 +33,7 @@ def provide_KDD():
     for c in x.columns:
         if x[c].dtype == 'object':
             cc = pd.Categorical(x[c])
-            mapping_indices[c] = dict(zip(cc.codes, cc.categories))
+            mapping_indices[c] = dict(zip(range(0, len(cc.categories)), cc.categories))
             x[c] = cc.codes
     x_train, y_train = x.drop('class', axis=1), pd.DataFrame(list(x['class']))
     return x_train, y_train, mapping_indices
@@ -52,14 +52,14 @@ def calc_spearman(x_train):
 
 
 def calc_vif(x_train):
-    '''
+    """
     https://stats.stackexchange.com/questions/155028/how-to-systematically-remove-collinear-variables-in-python#318668
     :param x_train: DataFrame
     :return: DataFrame
-    '''
+    """
     cols = x_train.columns
     variables = np.arange(x_train.shape[1])
-    c = x_train[cols[variables]].values
+    c = x_train[cols[variables]].values.astype(float)
     vif = [variance_inflation_factor(c, ix) for ix in np.arange(c.shape[1])]
     r = pd.DataFrame(zip(cols, vif), columns=['feature', 'value']).sort_values(by='value', ascending=False)
     return r
