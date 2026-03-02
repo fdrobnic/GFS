@@ -2,7 +2,7 @@
 
 Application with necessary methods to repeat all the experiments from the article:
 
-On the Interpretability of Machine Learning Models and Experimental Feature Selection in Case of Multicollinear Data
+On the Interpretability of Machine Learning Models and Experimental Feature Selection in Case of Multicollinear Data (DOI)[doi:10.3390/electronics9050761]
 
 ## Application
 
