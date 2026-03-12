@@ -3,5 +3,7 @@ dill
 matplotlib
 numpy
 pandas
+psutil
 rfpimp
-sklearn
+scikit-learn
+statsmodels
